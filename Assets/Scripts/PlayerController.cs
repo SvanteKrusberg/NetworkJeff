@@ -1,8 +1,9 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Mirror;
 
-public class PlayerController : MonoBehaviour {
+public class PlayerController : NetworkBehaviour {
 
     [SerializeField]
     float movementSpeed = 3f; // Unity-enheter per sekund
@@ -16,10 +17,28 @@ public class PlayerController : MonoBehaviour {
     [SerializeField]
     Transform bulletSpawnPoint;
 
-    float timeBetweenShots = 0.5f;
+    public float timeBetweenShots = 0.5f;
     float timeSinceLastShot = 0f;
-	
-	void Update () {
+    public float thrust = 500f;
+    public Rigidbody rb;
+    public bool isGrounded = true;
+
+    private void Start()
+    {
+        GetComponent<Renderer>().material.color = Random.ColorHSV();
+    }
+
+    public override void OnStartLocalPlayer()
+    {
+        rb = GetComponent<Rigidbody>();
+    } 
+
+    void Update () {
+
+        if (!isLocalPlayer)
+        {
+            return;
+        }
 
         float yRotation = Input.GetAxisRaw("Horizontal") * rotationSpeed * Time.deltaTime;
         float zMovement = Input.GetAxisRaw("Vertical") * movementSpeed * Time.deltaTime;
@@ -36,15 +55,22 @@ public class PlayerController : MonoBehaviour {
         {
             if (timeSinceLastShot > timeBetweenShots)
             {
-                Fire();
+                CmdFire();
                 timeSinceLastShot = 0;
             }
         }
+        if (Input.GetAxisRaw("Jump") > 0 && isGrounded == true)
+        {
+            rb.AddForce(0, thrust, 0, ForceMode.Impulse);
+        }
 
-	}
+    }
 
-    void Fire()
+    [Command]
+    void CmdFire()
     {
         GameObject bullet = Instantiate(bulletPrefab, bulletSpawnPoint.position, bulletSpawnPoint.rotation);
+
+        NetworkServer.Spawn(bullet);
     }
 }
